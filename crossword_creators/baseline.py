@@ -124,62 +124,22 @@ class CrosswordCreator():
             self.domains[var] = self.domains[var] - to_remove
 
     
-    
-    def revise(self, x: Variable, y: Variable, test_type: str = 'crossword') -> bool:
-        
-        overlaps = self.crossword.overlaps
-        domains = self.domains
-
-        # Validate 'test_type' first
-        assert test_type in ['crossword', 'kenken'], (f'test_type "{test_type}" not allowed. Must be "crossword" or "kenken".')
-        if test_type == 'crossword':
-            assert isinstance(x, Variable) and isinstance(y, Variable), ('x and y must be of type Variable')
-            assert isinstance(domains, dict), (f'domains should be of type dict, got {type(domains).__name__}')
-            assert isinstance(overlaps, dict), (f'overlaps should be of type dict, got {type(overlaps).__name__}')
-
-            for variable, domain in domains.items():
-                assert isinstance(variable, Variable), (f'Key "{variable}" must be of type Variable')
-                assert isinstance(domain, set), (f'Domain for "{variable}" must be a set, got {type(domain).__name__}')
-                assert domain, (f'Domain for "{variable}" must not be empty.')
-                for word in domain:
-                    assert isinstance(word, str), (f'Word "{word}" in {variable} is not a string')
-                    assert word, f'Blank word found in {variable}'
-                    assert len(word) > 2, (f'Word "{word}" in {variable} must have length >= 3')
-        else: #test_type == 'kenken':
-            assert isinstance(x, Cage) and isinstance(y, Cage), ('x and y must be of type Cage')
-            assert isinstance(domains, dict), (f'domains should be of type dict, got {type(domains).__name__}')
-            assert isinstance(overlaps, dict), (f'overlaps should be of type dict, got {type(overlaps).__name__}')
-            for cage, dom in domains.items():
-                assert isinstance(cage, Cage), (f'Key "{cage}" must be of type Cage')
-                assert isinstance(dom, set), (f'Domain for "{cage}" must be a set, got {type(dom).__name__}')
-                assert dom, (f'Domain for "{cage}" must not be empty.')
-                for vector in dom:
-                    assert isinstance(vector, Vector), (f'Vector "{vector}" in cage #{cage.id} is not of type Vector')
-                    assert len(vector) > 0, (f'Empty vector found in cage #{cage.id}')
-    
-    
-        def overlap_satisfied(x, y, val_x, val_y):
-            olap = overlaps.get((x,y))
-            if not olap:
-                return True
-            x_index, y_index = overlaps[x,y]
-            return True if val_x[x_index] == val_y[y_index] else False
-
+    def revise(self, x: Variable, y: Variable) -> bool:
         revision = False
-        to_remove = set()
+        removals = set()
 
         # Iterate over domain of x and y, track any inconsistent x:
-        for val_x in domains[x]:
+        for val_x in self.domains[x]:
             consistent = False
-            for val_y in domains[y]:
-                if val_x != val_y and overlap_satisfied(x, y, val_x, val_y):
+            for val_y in self.domains[y]:
+                if val_x != val_y and self.crossword.constraint_satisfied(x, y, val_x, val_y):
                     consistent = True
                     break
             if not consistent:
-                to_remove.add(val_x)
+                removals.add(val_x)
                 revision = True
         # Remove any domain variables that aren't arc consistent:
-        domains[x] = domains[x] - to_remove
+        self.domains[x] -= removals
         return revision
 
     def ac3(self, arcs=None):

@@ -4,3 +4,5 @@
 *.pyd
 
 clean_pycache.py
+
+scratch*.ipynb
