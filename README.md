@@ -11,8 +11,8 @@ Here we craft custom classes that allow kenken to use existing crossword solving
 This project is a riff on a project from Harvard's online course, *CS50: Introduction to Artificial Intelligence*.  The algorithm takes a blank puzzle structure and a vocabulary and fills in words in a way that is crossword-compatible.  Students were challenged to complete unimplemented methods of `class CrosswordCreator`.  A separate file contains two custom classes describing the layout of a generic crossword puzzle. 
 
 #### **The generic algorithms students are challenged to recreate are not new:**
-$\cdot $ ac3 (1977)
-$\cdot $ Backtrack search (1950's, likely earlier)
+- ac3 (1977)
+- Backtrack search (1950's, likely earlier)
 
 Well trod ground.  Our challenge is not the *CS50* assignment itself.  It is to build a custom Kenken solver that works with student implementation.  Our solution must be *implementation-agnostic*.
 
