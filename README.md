@@ -14,7 +14,7 @@ This project is a riff on a project from Harvard's online course, *CS50: Introdu
 - ac3 (1977)
 - Backtrack search (1950's, likely earlier)
 
-The sane approach is first to create generic ac3 and backtrack algorithms first. For example, showing only the `ac3()`):
+The sane approach is first to create generic ac3 and backtrack algorithms. For example, showing only the `ac3()`:
 
 <div style="font-size: 10px;">
 
@@ -29,7 +29,7 @@ class Solver:
       def revise(xi, xj):
         revised = False
         for x in csp.domains[xi]:
-            ## In the CS50 problem, CSP.is_consistent() is not a valid method and students are not able
+            ## In the CS50 problem, CSP.is_consistent() does not exist and students are not able
             # to make changes to the CSP class definition. This makes our problem more difficult.
             if not any(csp.is_consistent(xi, x, xj, y) for y in csp.domains[xj]):
                 csp.domains[xi].remove(x)
@@ -50,9 +50,11 @@ class Solver:
   ```
 </div>
 
-**Our challenge is not the algorihm but to hack the *CS50* assignment itself:** To build a custom Kenken solver that works with any student implementation.  Our solution must be *implementation-agnostic*.  But CS50 does not set up the algorithms in a generic way:
+I placed a simple implementation of a kenken solver using generic ac3 and backtrack algorithms in `~\generic\`.  Use the `run.ipynb` to test.
 
-1. The CS50 solver, `CrosswordCreator` constructs the `csp.domains` rather than accept them from the original `csp` (`crossword`) object. And so the student must enforce the node consistency inside the solver in his/her own way:
+**But our challenge is not the algorihm but to hack the *CS50* assignment itself:** To build a custom Kenken solver that works with any student implementation.  Our solution must be *implementation-agnostic*.  And CS50 does not set up the algorithms in a generic way:
+
+1. The CS50 solver, `CrosswordCreator` constructs the `csp.domains` rather than accept them from the original `csp` (`crossword`) object. And so our generic solver class must contain knowledge of how a crossword puzzle is constructed, which means it is *not* generic.
 
 <div style="font-size: 10px;">  
 
@@ -65,9 +67,9 @@ class CrosswordCreator:
 ```
 </div>
 
-2. The CSP class has no `.is_consistent()` method, forcing the student to implement its logic inside the solver itself.
-    
-** The effect of these two differences is to make their solutions far from generic.** 
+2. The `crossword` module has no equivalent of the `CSP.is_consistent()` method, forcing the student to test consistency inside the solver itself. Another reason the *CS50* solver is *not* generic. 
+
+**So how do we make it generic?**  Deploy custom inherited classes with overloaded operators to flip the logic of their python statements. 
 
 #### One rule: Do not modify the students' algorithms.
 For a method to be *implementation-agnostic*, it should work with any student's successful implementation of the crossword problem.
@@ -96,42 +98,16 @@ def func(x: Variable, y: Variable, domains: Dict[Variable, Set[str]],
 
 </div>
 
-#### Did it work?  Yes. But not always. A subtle but substantial error.
+#### Did it work?  Yes. But not always. A subtle but substantial error. 
 I sampled multiple published solutions to the *CS50* crossword project.  To be solution-agnostic, we consider all possible ways students might approach this problem. While the *Zen of Python* reads:  *"There should be one-- and preferably only one --obvious way to do it,"* the *CS50AI* students showed remarkable diversity in their approaches.
 
 ##### Where / when / how did it fail?
-A surprisingly high rate students (of my sample, 4 out of 6) *didn't actually implement the `ac3` algorithm correctly* for the original *CS50* problem.  Rather than analyzing their code, I looked at the results.  I built a simple `ac3` test to wrap their solutions (see `ac3_test.ipynb`) to analyze students' `ac3` results:
+It took me a long time to come to the answer.  But here it is: A surprisingly high rate students (of my sample, 4 out of 6) *didn't actually implement the `ac3` algorithm correctly* for the original *CS50* problem.  Rather than analyzing their code, I looked at the results of their code.  I built a simple `ac3` test to wrap their solutions (see `ac3_test.ipynb`) to analyze students' `ac3` results:
 
 <div style="font-size: 10px;">
 
 ```python
-
-# Words remaining in each variable domain after applying ac3()
-Puzzle 0
-pcoster       :[1, 1, 1, 1] :[passed]  (elapsed: 0.1037 milliseconds)
-verano_20     :[1, 1, 1, 1] :[passed]  (elapsed: 0.0865 milliseconds)
-hadeeer98     :[1, 1, 2, 1] :[failed]  (elapsed: 0.0849 milliseconds)
-chezslice     :[3, 4, 3, 3] :[failed]  (elapsed: 0.0455 milliseconds)
-marcoshernanz :[1, 1, 2, 1] :[failed]  (elapsed: 0.0689 milliseconds)
-iron8kid      :[3, 4, 3, 3] :[failed]  (elapsed: 0.2465 milliseconds)
-
-Puzzle 1
-pcoster       :[1, 2, 1, 1, 1, 2] :[passed]  (elapsed: 0.2108 milliseconds)
-verano_20     :[1, 2, 1, 1, 1, 2] :[passed]  (elapsed: 0.2642 milliseconds)
-hadeeer98     :[1, 2, 1, 1, 1, 2] :[passed]  (elapsed: 0.2122 milliseconds)
-chezslice     :[5, 5, 10, 4, 10, 5] :[failed]  (elapsed: 0.0908 milliseconds)
-marcoshernanz :[1, 2, 1, 1, 1, 2] :[passed]  (elapsed: 0.1590 milliseconds)
-iron8kid      :[5, 5, 10, 4, 10, 5] :[failed]  (elapsed: 0.5960 milliseconds)
-
-Puzzle 2
-pcoster       :[414, 500, 500, 382, 490, 169] :[passed]  (elapsed: 135.5505 milliseconds)
-verano_20     :[414, 500, 500, 382, 490, 169] :[passed]  (elapsed: 982.2309 milliseconds)
-hadeeer98     :[414, 502, 502, 382, 490, 169] :[failed]  (elapsed: 305.6815 milliseconds)
-chezslice     :[491, 502, 502, 483, 502, 174] :[failed]  (elapsed: 2.2414 milliseconds)
-marcoshernanz :[414, 502, 502, 382, 490, 169] :[failed]  (elapsed: 12.1646 milliseconds)
-iron8kid      :[491, 502, 502, 483, 502, 174] :[failed]  (elapsed: 272.9518 milliseconds)
-
-Size of variable domains after ac3()
+# Size of variable domains after ac3()
 Puzzle 0
 pcoster       :[1, 1, 1, 1] :[passed]  (elapsed: 0.0708 milliseconds)
 verano_20     :[1, 1, 1, 1] :[passed]  (elapsed: 0.0563 milliseconds)
@@ -162,15 +138,15 @@ verano_20     :[2, 2, 2, 2, 2, 2, 2, 2, 2, 2] :[passed]  (elapsed: 0.8316 millis
 hadeeer98     :[2, 2, 2, 2, 2, 2, 2, 2, 2, 2] :[passed]  (elapsed: 0.3705 milliseconds)
 chezslice     :[16, 16, 16, 16, 16, 16, 16, 16, 16, 16] :[failed]  (elapsed: 0.0482 milliseconds)
 marcoshernanz :[2, 2, 2, 2, 2, 2, 2, 2, 2, 2] :[passed]  (elapsed: 0.2203 milliseconds)
+iron8kid:  # iron8kid took too long here, had to force break. Sorry, kid.
 ```
 
 </div>
 
-Why didn't *CS50* catch this?  I'm wrong or they're wrong.
 
 ##### How the error was found and how it can slip by undetected
 
-(1) The `ac3` algorithm's result is *deterministic*.  All the results above should be the same.  That is, while python's under-the-hood ordering of `set`/`dict` items might vary the path of reductions of the solution space, the end result must be the same:  The remaining set of possible solutions after applying `ac3` must be the same for all correct implementations of `ac3` when applied to a particular puzzle. They weren't.  However, some of the sample puzzles provided by *CS50* had multiple valid solutions.  Rerunning the code multiple times makes this obvious. The student solvers were succeeding `ac3` because they could afford to eliminate a valid solution so long as there were valid ones remaining.
+(1) The `ac3` algorithm's result is *deterministic*.  All the results above should be the same.  That is, while python's under-the-hood ordering of `set`/`dict` items might vary the path of reductions of the solution space, the end result must be the same:  The remaining set of possible solutions after applying `ac3` must be the same for all correct implementations of `ac3` when applied to a particular puzzle. They weren't.  However, an incorrect `ac3` didn't prevent any of the student implementations from solving the puzzle.  Rerunning the code multiple times makes this obvious. The student solvers were succeeding `ac3` because they could afford to eliminate a valid solution so long as there were valid ones remaining.
 
 (2) The generic `ac3` algorithm is defined to return `False` if and only if any one of the puzzle's several `Variable` domain spaces becomes empty.  It will return `True` otherise, even if the `ac3` algorithm has incorrectly removed all possible, *assignable* words to a correct solution from any of the `Variable` objects.  And, as suggested above, an incorrectly implemented `ac3` might remove the last valid solution (return `False`) or remove one of multiple valid solutions but leave other valid ones (return `True`).  
 

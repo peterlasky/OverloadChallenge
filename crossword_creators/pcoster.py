@@ -293,7 +293,6 @@ class CrosswordCreator():
 
         return result[0]
 
-
         # SIMPLE, INEFFICIENT - RETURN ANY VARIABLE:
         #return [var for var in unassigned][0]
 

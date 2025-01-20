@@ -5,10 +5,11 @@ from collections import defaultdict
 from functools import cache
 import ast
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Set, Dict
 
-from custom_classes import Overlap, Vector
-
+Vector = Tuple[int,...]
+Domain = Set[Vector]
+Overlap = List[Tuple[int,int]]
 
 EQUAL, ADD, SUB, MULT, DIV = '=+-x÷'
 OP_FUNC = { ADD:   sum, 
@@ -32,29 +33,30 @@ class Cage:
         In Crossword's Variable class, we explore all possible words that might
         fit.  Here, we explore all possible integer tuples (vectors).
         '''
-        op = self.op; 
-        N = self.N
-        target = self.target
+        op: str = self.op; 
+        N: int = self.N
+        target: int = self.target
 
         if op == EQUAL:
-            domain = {tuple([target]),}
+            domain: Domain = {tuple([target]),}
         elif op in (SUB, DIV):
-            domain = {  tuple([n1, n2])
+            domain: Domain = {  tuple([n1, n2])
                         for n1 in range(1, N+1)
                         for n2 in range(1, N+1)
                         if OP_FUNC[op](n1,n2) == target and n1 != n2}
         else: # op in (ADD, MULT)
             rows_occupied, cols_occupied = zip(*self.cells)
-            max_duplicates = min(len(set(rows_occupied)), len(set(cols_occupied)))
+            max_duplicates: int = min(len(set(rows_occupied)), len(set(cols_occupied)))
             digit_pool = list(range(1, N+1)) * max_duplicates
-            domain = {
-                  permutation
+            domain: Domain = {
+                  permutation # type Tuple
                   for permutation in itertools.permutations(digit_pool, len(self.cells))
                   if self._row_column_constraint_satisfied(permutation)
                      and OP_FUNC[op](permutation) == self.target}
-        self.domain = {Vector(list(v)) for v in domain}
+        
+        self.domain: Domain = domain
     
-    def _row_column_constraint_satisfied(self, perm):
+    def _row_column_constraint_satisfied(self, perm:Tuple) -> bool:
         rows, cols = defaultdict(set), defaultdict(set)
         for digit, (r, c) in zip(perm, self.cells):
             if digit in rows[r]: 
@@ -68,7 +70,7 @@ class Cage:
         return True
     
     @property
-    def length(self): # Required: used by crossword solver
+    def length(self) -> int : # Required: used by crossword solver
         return self.__len__()  
     def __hash__(self):         return hash(self.id)
     def __eq__(self, other):    return self.id == other.id
@@ -77,12 +79,11 @@ class Cage:
     def __str__(self):          return self.__repr__()
     def __copy__(self):         return self
 
-
+Overlaps = Dict[Tuple[Cage, Cage], Overlap]
 class Kenken:
     """ A class to represent a Kenken puzzle as a list of cages """
     
     def __init__(self, structure_file, word_file=None):
-        self.words = set()  # required during CrosswordCreator initialization
         self.structure = []
         with open(structure_file,'r') as f:
             for line in f:
@@ -100,7 +101,7 @@ class Kenken:
         self.cages = [Cage(op=op, target=target, cells=cells, N=self.N)
                       for (op, target, cells) in self.structure]
         
-        
+        self.words = set()  # required during CrosswordCreator initialization
 
         ### Build overlap dictionary
         '''
@@ -117,28 +118,41 @@ class Kenken:
         Here, we wrap the output in a custom class, Overlap. See write-up for details
         '''
         from collections import defaultdict
-        self.overlaps = defaultdict(lambda: None)
-        self._overlaps = defaultdict(lambda: None)
+        self.overlaps:Overlaps_Dict = defaultdict(lambda: None)
         for cage1 in self.cages:
             for cage2 in self.cages:
                 if cage1 != cage2:  # Don't compute overlaps with self
-                    overlap_pts = []
+                    overlap_pts:Overlap = []
                     for position1, cell1 in enumerate(cage1.cells):
                         for position2, cell2 in enumerate(cage2.cells):
                             if cell1[0] == cell2[0] or cell1[1] == cell2[1]:
                                 overlap_pts.append((position1, position2))
                     if overlap_pts != []:
-                        self.overlaps[(cage1, cage2)] = Overlap(overlap_pts)
-                        self._overlaps[(cage1, cage2)] = overlap_pts
+                        self.overlaps[(cage1, cage2)] = overlap_pts
 
     @cache
-    def neighbors(self, cage):
+    def neighbors(self, cage:Cage) -> Set[Cage]:
         """Given a cage, return set of overlapping cages."""
         return {
             other_cage for other_cage in self.cages
             if cage != other_cage and
                 self.overlaps[cage, other_cage]
             }
+
+    def is_consistent(self, var1: 'Cage', var2: 'Cage', vector1: Vector, vector2: Vector) -> bool:
+        ''' Returns True if vector1 and vector2 are consistent with each other.
+        That is, if var1 and var2 share a row or column, then vector1 and vector2
+        cannot have the same value in that position.
+        '''
+        if var1 == var2:
+            return True
+        overlap = self.overlaps.get((var1, var2), None)
+        if overlap is None:
+            return True
+        for i, j in overlap:
+            if vector1[i] == vector2[j]:
+                return False
+        return True
 
     def __repr__(self):       return f"Kenken({self.N}x{self.N}, {len(self.cages)} cages)"
     def __iter__(self):       return iter(self.cages)
